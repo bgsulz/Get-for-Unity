@@ -6,7 +6,7 @@ Stay in the flow and keep coding rather than fiddling around with Inspector fiel
 Simply type the attribute before public or serialized fields.
 _The field will light up **red** if it can't find a component to fill it!_
 
-```
+```c#
 using BGS.Attributes;
 using UnityEngine;
 

@@ -1,14 +1,13 @@
 using UnityEngine;
 
-namespace BGS.Attributes
+namespace Extra.Attributes
 {
     public enum GetterSource
     {
         Object,
         Children,
         Parent,
-        Find,
-        Add
+        Find
     }
 
     public class GetAttribute : PropertyAttribute
@@ -21,21 +20,16 @@ namespace BGS.Attributes
 
     public class GetInChildrenAttribute : GetAttribute
     {
-        public GetInChildrenAttribute() => GetterSource = GetterSource.Children;
+        public GetInChildrenAttribute() : base(GetterSource.Children) { }
     }
 
     public class GetInParentAttribute : GetAttribute
     {
-        public GetInParentAttribute() => GetterSource = GetterSource.Parent;
+        public GetInParentAttribute() : base(GetterSource.Parent) { }
     }
 
     public class FindAttribute : GetAttribute
     {
-        public FindAttribute() => GetterSource = GetterSource.Find;
-    }
-
-    public class GetOrAddAttribute : GetAttribute
-    {
-        public GetOrAddAttribute() => GetterSource = GetterSource.Add;
+        public FindAttribute() : base(GetterSource.Find) { }
     }
 }

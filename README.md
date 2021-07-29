@@ -2,6 +2,16 @@
 **Unity attribute that fills your component references for you.**
 Stay in the flow and keep coding rather than fiddling around with Inspector fields.
 
+Simply tag your fields with the attribute...
+
+```c#
+[GetInChildren] public Collider collider;
+```
+
+...and select the reference you're looking for.
+
+![GetAttribute Graphics](https://user-images.githubusercontent.com/38191432/127414944-9ce09f7d-3aa0-4d1f-adca-2ee5062d92ae.png)
+
 ## Quick start guide
 Simply type the attribute before public or serialized fields. _The field will light up **red** if it can't find a component to fill it!_
 

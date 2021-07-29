@@ -22,12 +22,11 @@ public class MyBehaviour : MonoBehaviour
     // Gets the component from the same GameObject or its parent, like GetComponentInParent.
     [GetInParent] public Collider2D collider;
     
-    // Gets the component from the same GameObject, like GetComponent; if none found, adds it.
-    [GetOrAdd] public NetworkIdentity networkID;
-    
     // Gets the component from any GameObject, like FindObjectOfType.
     [Find] public GameManager gameManager;
     
     ...
 }
 ```
+
+Version 2.0

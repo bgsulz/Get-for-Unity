@@ -13,7 +13,7 @@ Simply tag your fields with the attribute...
 ![GetAttribute Graphics](https://user-images.githubusercontent.com/38191432/127414944-9ce09f7d-3aa0-4d1f-adca-2ee5062d92ae.png)
 
 ## Quick start guide
-Simply type the attribute before public or serialized fields. _The field will light up **red** if it can't find a component to fill it!_
+Simply type the attribute before public or serialized fields.
 
 This works **only in-editor,** not for objects created at runtime. In other words, it replaces dragging and dropping references in the Inspector.
 

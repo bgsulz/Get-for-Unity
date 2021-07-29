@@ -5,7 +5,7 @@ Stay in the flow and keep coding rather than fiddling around with Inspector fiel
 Simply tag your fields with the attribute...
 
 ```c#
-[GetInChildren] public Collider collider;
+[GetInChildren] public Collider myCollider;
 ```
 
 ...and select the reference you're looking for.

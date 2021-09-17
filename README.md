@@ -18,7 +18,7 @@ Simply type the attribute before public or serialized fields.
 This works **only in-editor,** not for objects created at runtime. In other words, it replaces dragging and dropping references in the Inspector.
 
 ```c#
-using BGS.Attributes;
+using Extra.Attributes;
 using UnityEngine;
 
 public class MyBehaviour : MonoBehaviour

@@ -35,8 +35,11 @@ public class MyBehaviour : MonoBehaviour
     // Gets the component from any GameObject, like FindObjectOfType.
     [Find] public GameManager gameManager;
     
+    // Gets the component from any GameObject or Prefab, like FindObjectOfTypeAll.
+    [FindPrefab] public Poolable poolable;
+    
     ...
 }
 ```
 
-Version 2.0
+Version 3.0

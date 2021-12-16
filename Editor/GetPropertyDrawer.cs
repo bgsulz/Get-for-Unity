@@ -1,4 +1,4 @@
-// ReSharper disable file CoVariantArrayConversion
+#if UNITY_EDITOR
 
 using System;
 using System.Collections.Generic;
@@ -13,129 +13,147 @@ namespace Extra.Attributes
     [CustomPropertyDrawer(typeof(GetAttribute), true)]
     public class GetPropertyDrawer : PropertyDrawer
     {
-        #region Helpers
+        private GetAttribute _attribute;
+        private GetAttribute Attribute => _attribute ??= (GetAttribute) attribute;
+        private MonoBehaviour _target;
 
-        private GetAttribute GetAttribute => (GetAttribute) attribute;
+        private const float ButtonWidth = 0.2f, FieldWidth = 0.8f;
 
-        #endregion
+        private static readonly GetterSource[] Finders = { GetterSource.Find, GetterSource.FindPrefab };
+        private bool IsFinder => Finders.Contains(Attribute.GetterSource);
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            var listObjects = property.CandidateObjects(GetAttribute.GetterSource, fieldInfo);
+            _target = property.serializedObject.targetObject as MonoBehaviour;
 
-            if (listObjects.Length <= 0)
-            {
-                GUI.enabled = false;
-                EditorGUI.LabelField(position, label.GetterFormat(GetAttribute));
-                
-                var messagePosition = position.MessageRect();
-                
-                GUI.enabled = true;
-                if (GetAttribute.GetterSource == GetterSource.Find) 
-                    GUI.Label(messagePosition, "None found.");
-                else if (GUI.Button(messagePosition, "None found. Add?")) 
-                    property.SetRef(property.Target()?.gameObject.AddComponent(fieldInfo.FieldType));
-                
-                return;
-            }
+            var candidates = CandidateObjects(property, Attribute.GetterSource, fieldInfo);
 
-            var index = Mathf.Clamp(Array.IndexOf(listObjects, property.Ref()), 0, int.MaxValue);
+            EditorGUI.BeginProperty(position, label, property);
+
+            if (candidates.Length <= 0)
+                NoneFoundField(position, property, label);
+            else
+                CandidatesField(position, property, label, candidates);
+
+            EditorGUI.EndProperty();
+        }
+
+        private void CandidatesField(Rect position, SerializedProperty property, GUIContent label, Object[] candidates)
+        {
+            var leftPos = LeftPos(position);
+            var rightPos = RightPos(position);
+
+            var index = Mathf.Max(Array.IndexOf(candidates, property.objectReferenceValue), 0);
 
             EditorGUI.BeginChangeCheck();
 
-            var newIndex = EditorGUI.Popup(position.RightSide(), index, listObjects.ToFormattedNames().ToArray());
+            var countedNames = CountedNames(candidates, includeAddNew: !IsFinder).ToArray();
+            var newIndex = EditorGUI.Popup(rightPos, index, countedNames);
 
-            if (EditorGUI.EndChangeCheck())
+            var oldRef = property.objectReferenceValue;
+
+            if (EditorGUI.EndChangeCheck() || !oldRef || !UnwrapElementType(fieldInfo.FieldType).IsInstanceOfType(oldRef))
             {
-                var oldRef = property.Ref();
-                property.SetRef(listObjects[newIndex]);
-                
-                if (oldRef != property.Ref())
+                property.objectReferenceValue = newIndex < candidates.Length ? candidates[newIndex] : AddedComponent();
+
+                if (!oldRef || oldRef != property.objectReferenceValue)
                 {
-                    Undo.RecordObject(property.serializedObject.targetObject, "Changed property value");
+                    Undo.RecordObject(_target, "Changed property value");
                     property.serializedObject.ApplyModifiedProperties();
                 }
             }
 
             GUI.enabled = false;
-            EditorGUI.ObjectField(position.LeftSide(), property, new GUIContent(label.GetterFormat(GetAttribute)));
+            EditorGUI.ObjectField(leftPos, property, Formatted(label, Attribute));
         }
-    }
 
-    internal static class GetPropertyDrawerExtensions
-    {
-        internal static MonoBehaviour Target(this SerializedProperty property) 
-            => property.serializedObject.targetObject as MonoBehaviour;
-        
-        internal static Object Ref(this SerializedProperty property)
-            => property.objectReferenceValue;
-
-        internal static Object SetRef(this SerializedProperty property, in Object value) 
-            => property.objectReferenceValue = value;
-
-        internal static string GetterFormat(this GUIContent label, in GetAttribute attribute)
-            => $"{label.text} [src: {attribute.GetterSource.ToString()}]";
-        
-        internal static Rect LeftSide(this Rect position)
+        private void NoneFoundField(Rect position, SerializedProperty property, GUIContent label)
         {
-            var res = position;
-            res.width *= 0.8f;
-            res.x = position.x;
-            return res;
+            var leftPos = LeftPos(position);
+            var rightPos = RightPos(position);
+
+            property.objectReferenceValue = null;
+
+            GUI.enabled = false;
+            EditorGUI.ObjectField(leftPos, property, Formatted(label, Attribute));
+            GUI.enabled = true;
+
+            if (IsFinder)
+            {
+                GUI.color = Color.red;
+                GUI.Label(rightPos, "None found.");
+            }
+            else
+            {
+                var button = GUI.Button(rightPos, "Add");
+                if (button) property.objectReferenceValue = AddedComponent();
+            }
         }
 
-        internal static Rect RightSide(this Rect position)
+        private Component AddedComponent() => _target!.gameObject.AddComponent(UnwrapElementType(fieldInfo.FieldType));
+
+        private static Rect RightPos(Rect position)
         {
-            var res = position;
-            res.width *= 0.2f;
-            res.x = position.x + position.width * 0.8f;
-            return res;
+            position.x += position.width * (1 - ButtonWidth);
+            position.width *= ButtonWidth;
+            return position;
         }
-        
-        internal static Rect MessageRect(this Rect position)
+
+        private static Rect LeftPos(Rect position)
         {
-            var res = position;
-            res.width = position.width * 0.6f;
-            res.x = position.x + position.width * 0.4f;
-            return res;
+            position.width *= FieldWidth;
+            return position;
         }
-        
-        internal static IEnumerable<string> ToFormattedNames(this IEnumerable<Object> input)
+
+        private static GUIContent Formatted(GUIContent label, in GetAttribute attribute)
+        {
+            label.text = $"{label.text} [src: {attribute.GetterSource.ToString()}]";
+            return label;
+        }
+
+        private static Object[] CandidateObjects(SerializedProperty property, in GetterSource getterSource, in FieldInfo fieldInfo)
+        {
+            var mb = property.serializedObject.targetObject as MonoBehaviour;
+            var fieldType = UnwrapElementType(fieldInfo.FieldType);
+
+            return mb
+                ? getterSource switch
+                {
+                    GetterSource.Object => mb.GetComponents(fieldType) as Object[],
+                    GetterSource.Children => mb.GetComponentsInChildren(fieldType, true) as Object[],
+                    GetterSource.Parent => mb.GetComponentsInParent(fieldType, true) as Object[],
+                    GetterSource.Find => Object.FindObjectsOfType(fieldType, true),
+                    GetterSource.FindPrefab => Resources.FindObjectsOfTypeAll(fieldType),
+                    _ => null
+                }
+                : null;
+        }
+
+        private static IEnumerable<string> CountedNames(IEnumerable<Object> input, bool includeAddNew = false)
         {
             var names = input.Select(item => item.name).ToArray();
 
             var indexTrackerDictionary = names
                 .GroupBy(item => item)
                 .Where(item => item.Count() > 1)
-                .ToDictionary(item => item.Key, item => 0);
+                .ToDictionary(item => item.Key, _ => 0);
 
             foreach (var item in names)
             {
                 if (!indexTrackerDictionary.TryGetValue(item, out var value)) // If not a duplicate...
                 {
-                    yield return item;
+                    yield return item; // We don't care.
                     continue;
                 }
-                
+
                 indexTrackerDictionary[item] = ++value; // We've now encountered this item {value} times.
                 yield return $"{item} [{value - 1}]";
             }
+
+            if (includeAddNew) yield return "(Add new)";
         }
 
-        internal static Object[] CandidateObjects(this SerializedProperty property, in GetterSource getterSource, in FieldInfo fieldInfo)
-        {
-            var mb = Target(property);
-            
-            return mb
-                ? getterSource switch
-                {
-                    GetterSource.Object => mb.GetComponents(fieldInfo.FieldType),
-                    GetterSource.Children => mb.GetComponentsInChildren(fieldInfo.FieldType, true),
-                    GetterSource.Parent => mb.GetComponentsInParent(fieldInfo.FieldType, true),
-                    GetterSource.Find => Object.FindObjectsOfType(fieldInfo.FieldType, true),
-                    _ => null
-                }
-                : null;
-        }
+        private static Type UnwrapElementType(Type type) => type.IsArray ? UnwrapElementType(type.GetElementType()) : type;
     }
 }
+#endif

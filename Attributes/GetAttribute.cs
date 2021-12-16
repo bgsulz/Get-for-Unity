@@ -7,12 +7,13 @@ namespace Extra.Attributes
         Object,
         Children,
         Parent,
-        Find
+        Find,
+        FindPrefab
     }
 
     public class GetAttribute : PropertyAttribute
     {
-        public GetterSource GetterSource;
+        public GetterSource GetterSource { get; }
 
         public GetAttribute(GetterSource getterSource = GetterSource.Object) =>
             GetterSource = getterSource;
@@ -31,5 +32,10 @@ namespace Extra.Attributes
     public class FindAttribute : GetAttribute
     {
         public FindAttribute() : base(GetterSource.Find) { }
+    }
+
+    public class FindPrefabAttribute : GetAttribute
+    {
+        public FindPrefabAttribute() : base(GetterSource.FindPrefab) { }
     }
 }

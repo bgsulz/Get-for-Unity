@@ -1,4 +1,4 @@
-#if UNITY_EDITOR
+﻿#if UNITY_EDITOR
 
 using System;
 using System.Collections.Generic;
@@ -129,8 +129,9 @@ namespace Extra.Attributes
                 : null;
         }
 
-        private static IEnumerable<string> CountedNames(IEnumerable<Object> input, bool includeAddNew = false)
+        private static IEnumerable<string> CountedNames(Object[] input, bool includeAddNew = false)
         {
+            var res = new List<string>(input.Length + 1);
             var names = input.Select(item => item.name).ToArray();
 
             var indexTrackerDictionary = names
@@ -142,15 +143,16 @@ namespace Extra.Attributes
             {
                 if (!indexTrackerDictionary.TryGetValue(item, out var value)) // If not a duplicate...
                 {
-                    yield return item; // We don't care.
+                    res.Add(item); // We don't care.
                     continue;
                 }
 
                 indexTrackerDictionary[item] = ++value; // We've now encountered this item {value} times.
-                yield return $"{item} [{value - 1}]";
+                res.Add($"{item} [{value - 1}]");
             }
 
-            if (includeAddNew) yield return "(Add new)";
+            if (includeAddNew) res.Add("(Add new)");
+            return res;
         }
 
         private static Type UnwrapElementType(Type type) => type.IsArray ? UnwrapElementType(type.GetElementType()) : type;

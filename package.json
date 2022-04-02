@@ -1,0 +1,14 @@
+{
+	"name": "com.bgs.getattribute",
+	"version": "0.3.0",
+	"displayName": "GetAttribute",
+	"description": "A Unity attribute that fills your Component references for you.",
+	"unity": "2021.1",
+	"dependencies": {},
+	"keywords": ["getcomponent, attribute, unity"],
+	"author": {
+		"name": "Ben Sulzinsky",
+		"email": "bsulzinsky@gmail.com",
+		"url": "http://www.bgsmusic.com"
+	}
+}

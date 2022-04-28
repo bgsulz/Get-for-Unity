@@ -155,7 +155,15 @@ namespace Extra.Attributes
             return res;
         }
 
-        private static Type UnwrapElementType(Type type) => type.IsArray ? UnwrapElementType(type.GetElementType()) : type;
+        private static bool IsList(Type type) => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>);
+        private static Type UnwrapElementType(Type type)
+        {
+            if (type.IsArray) return UnwrapArrayElementType(type);
+            if (IsList(type)) return UnwrapListElementType(type);
+            return type;
+        }
+        private static Type UnwrapArrayElementType(Type type) => type.IsArray ? UnwrapArrayElementType(type.GetElementType()) : type;
+        private static Type UnwrapListElementType(Type type) => IsList(type) ? UnwrapListElementType(type.GetGenericArguments()[0]) : type;
     }
 }
 #endif

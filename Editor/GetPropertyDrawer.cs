@@ -19,7 +19,7 @@ namespace Extra.Attributes
 
         private const float ButtonWidth = 0.2f, FieldWidth = 0.8f;
 
-        private static readonly GetterSource[] Finders = { GetterSource.Find, GetterSource.FindPrefab };
+        private static readonly GetterSource[] Finders = { GetterSource.Find, GetterSource.FindAssets };
         private bool IsFinder => Finders.Contains(Attribute.GetterSource);
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -113,20 +113,29 @@ namespace Extra.Attributes
 
         private static Object[] CandidateObjects(SerializedProperty property, in GetterSource getterSource, in FieldInfo fieldInfo)
         {
-            var mb = property.serializedObject.targetObject as MonoBehaviour;
+            var mb = property.serializedObject.targetObject;
             var fieldType = UnwrapElementType(fieldInfo.FieldType);
-
             return mb
                 ? getterSource switch
                 {
-                    GetterSource.Object => mb.GetComponents(fieldType) as Object[],
-                    GetterSource.Children => mb.GetComponentsInChildren(fieldType, true) as Object[],
-                    GetterSource.Parent => mb.GetComponentsInParent(fieldType, true) as Object[],
+                    GetterSource.Object => (mb as MonoBehaviour)?.GetComponents(fieldType) as Object[],
+                    GetterSource.Children => (mb as MonoBehaviour)?.GetComponentsInChildren(fieldType, true) as Object[],
+                    GetterSource.Parent => (mb as MonoBehaviour)?.GetComponentsInParent(fieldType, true) as Object[],
                     GetterSource.Find => Object.FindObjectsOfType(fieldType, true),
-                    GetterSource.FindPrefab => Resources.FindObjectsOfTypeAll(fieldType),
+                    GetterSource.FindAssets => GetAllAssetsOfType(fieldType),
                     _ => null
                 }
                 : null;
+        }
+
+        private static Object[] GetAllAssetsOfType(Type type)
+        {
+            var guids = AssetDatabase.FindAssets($"t:{type.Name}");
+            var assets = guids
+                .Select(x => AssetDatabase.LoadAssetAtPath<Object>(AssetDatabase.GUIDToAssetPath(x)))
+                .Where(x => x != null)
+                .ToArray();
+            return assets;
         }
 
         private static IEnumerable<string> CountedNames(Object[] input, bool includeAddNew = false)

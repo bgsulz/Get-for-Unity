@@ -8,7 +8,7 @@ namespace Extra.Attributes
         Children,
         Parent,
         Find,
-        FindPrefab
+        FindAssets
     }
 
     public class GetAttribute : PropertyAttribute
@@ -34,8 +34,8 @@ namespace Extra.Attributes
         public FindAttribute() : base(GetterSource.Find) { }
     }
 
-    public class FindPrefabAttribute : GetAttribute
+    public class FindAssetsAttribute : GetAttribute
     {
-        public FindPrefabAttribute() : base(GetterSource.FindPrefab) { }
+        public FindAssetsAttribute() : base(GetterSource.FindAssets) { }
     }
 }

@@ -1,5 +1,5 @@
 # GetAttribute
-**Unity attribute that fills your component references for you.**
+**Unity attribute that fills your component and object references for you.**
 Stay in the flow and keep coding rather than fiddling around with Inspector fields.
 
 Simply tag your fields with the attribute...
@@ -35,8 +35,8 @@ public class MyBehaviour : MonoBehaviour
     // Gets the component from any GameObject, like FindObjectOfType.
     [Find] public GameManager gameManager;
     
-    // Gets the component from any GameObject or Prefab, like FindObjectOfTypeAll.
-    [FindPrefab] public Poolable poolable;
+    // Gets the object from anywhere in AssetDatabase; works with ScriptableObjects.
+    [FindAssets] public CardData data;
     
     ...
 }

@@ -13,8 +13,15 @@ namespace Extra.Attributes
     [CustomPropertyDrawer(typeof(GetAttribute), true)]
     public class GetPropertyDrawer : PropertyDrawer
     {
+        private bool _initialized;
+        private Object[] _candidates;
+        
         private GetAttribute _attribute;
         private GetAttribute Attribute => _attribute ??= (GetAttribute) attribute;
+
+        private Type _fieldType;
+        private Type FieldType => _fieldType ??= UnwrapElementType(fieldInfo.FieldType);
+        
         private MonoBehaviour _target;
 
         private const float ButtonWidth = 0.2f, FieldWidth = 0.8f;
@@ -26,22 +33,31 @@ namespace Extra.Attributes
         {
             _target = property.serializedObject.targetObject as MonoBehaviour;
 
-            var candidates = CandidateObjects(property, Attribute.GetterSource, fieldInfo);
+            if (CheckForUpdate())
+                _candidates = CandidateObjects(property, Attribute.GetterSource, fieldInfo);
 
             EditorGUI.BeginProperty(position, label, property);
 
-            if (candidates.Length <= 0)
+            if (_candidates.Length <= 0)
                 NoneFoundField(position, property, label);
             else
-                CandidatesField(position, property, label, candidates);
+                CandidatesField(position, property, label, _candidates);
 
             EditorGUI.EndProperty();
+
+            bool CheckForUpdate()
+            {
+                if (!_initialized) return true;
+                if (_candidates == null) return true;
+                if (Event.current.type != EventType.MouseDown) return false;
+                return position.Contains(Event.current.mousePosition);
+            }
         }
 
         private void CandidatesField(Rect position, SerializedProperty property, GUIContent label, Object[] candidates)
         {
-            var leftPos = LeftPos(position);
-            var rightPos = RightPos(position);
+            var leftPos = LeftPartOf(position);
+            var rightPos = RightPartOf(position);
 
             var index = Mathf.Max(Array.IndexOf(candidates, property.objectReferenceValue), 0);
 
@@ -63,20 +79,19 @@ namespace Extra.Attributes
                 }
             }
 
-            GUI.enabled = false;
-            EditorGUI.ObjectField(leftPos, property, Formatted(label, Attribute));
+            using (new EditorGUI.DisabledScope()) 
+                EditorGUI.ObjectField(leftPos, property, Formatted(label, Attribute));
         }
 
         private void NoneFoundField(Rect position, SerializedProperty property, GUIContent label)
         {
-            var leftPos = LeftPos(position);
-            var rightPos = RightPos(position);
+            var leftPos = LeftPartOf(position);
+            var rightPos = RightPartOf(position);
 
             property.objectReferenceValue = null;
 
-            GUI.enabled = false;
-            EditorGUI.ObjectField(leftPos, property, Formatted(label, Attribute));
-            GUI.enabled = true;
+            using (new EditorGUI.DisabledScope()) 
+                EditorGUI.ObjectField(leftPos, property, Formatted(label, Attribute));
 
             if (IsFinder)
             {
@@ -90,16 +105,16 @@ namespace Extra.Attributes
             }
         }
 
-        private Component AddedComponent() => _target!.gameObject.AddComponent(UnwrapElementType(fieldInfo.FieldType));
+        private Component AddedComponent() => _target!.gameObject.AddComponent(FieldType);
 
-        private static Rect RightPos(Rect position)
+        private static Rect RightPartOf(Rect position)
         {
             position.x += position.width * (1 - ButtonWidth);
             position.width *= ButtonWidth;
             return position;
         }
 
-        private static Rect LeftPos(Rect position)
+        private static Rect LeftPartOf(Rect position)
         {
             position.width *= FieldWidth;
             return position;

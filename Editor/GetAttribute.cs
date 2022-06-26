@@ -1,3 +1,5 @@
+#define EXTRA_GET
+
 using UnityEngine;
 
 namespace Extra.Attributes

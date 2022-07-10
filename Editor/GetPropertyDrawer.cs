@@ -1,9 +1,8 @@
 ﻿#if UNITY_EDITOR
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
+using Extra.Editor.Properties;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -11,7 +10,7 @@ using Object = UnityEngine.Object;
 namespace Extra.Attributes
 {
     [CustomPropertyDrawer(typeof(GetAttribute), true)]
-    public class GetPropertyDrawer : PropertyDrawer
+    public partial class GetPropertyDrawer : PropertyDrawer
     {
         private bool _initialized;
         private Object[] _candidates;
@@ -20,32 +19,36 @@ namespace Extra.Attributes
         private GetAttribute Attribute => _attribute ??= (GetAttribute) attribute;
 
         private Type _fieldType;
-        private Type FieldType => _fieldType ??= UnwrapElementType(fieldInfo.FieldType);
+        private Type FieldType => _fieldType ??= fieldInfo.FieldType;
+        
+        private Type _targetType;
+        private Type TargetType => _targetType ??= FieldType.Unwrap();
         
         private MonoBehaviour _target;
 
-        private const float ButtonWidth = 0.2f, FieldWidth = 0.8f;
-
-        private static readonly GetterSource[] Finders = { GetterSource.Find, GetterSource.FindAssets };
-        private bool IsFinder => Finders.Contains(Attribute.GetterSource);
+        private bool IsFinder => Attribute.GetterSource is GetterSource.Find or GetterSource.FindAssets;
+        private bool AbleToAddNew => !IsFinder && !FieldType.IsWrapper();
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             _target = property.serializedObject.targetObject as MonoBehaviour;
 
-            if (CheckForUpdate())
-                _candidates = CandidateObjects(property, Attribute.GetterSource, fieldInfo);
+            if (ShouldCheckForUpdate())
+                _candidates = CandidateObjects(property, TargetType, Attribute.GetterSource);
 
-            EditorGUI.BeginProperty(position, label, property);
+            var elementType = FieldType.UnwrapElement();
+            var objectProperty = elementType.IsWrapper() ? property.FindPropertyRelative(IPropertyWrapper.PropertyName) : property;
+
+            EditorGUI.BeginProperty(position, label, objectProperty);
 
             if (_candidates.Length <= 0)
-                NoneFoundField(position, property, label);
+                NoneFoundField(position, objectProperty, label);
             else
-                CandidatesField(position, property, label, _candidates);
+                CandidatesField(position, objectProperty, label, _candidates);
 
             EditorGUI.EndProperty();
 
-            bool CheckForUpdate()
+            bool ShouldCheckForUpdate()
             {
                 if (!_initialized) return true;
                 if (_candidates == null) return true;
@@ -54,140 +57,80 @@ namespace Extra.Attributes
             }
         }
 
-        private void CandidatesField(Rect position, SerializedProperty property, GUIContent label, Object[] candidates)
+        private void CandidatesField(Rect position, SerializedProperty objectProperty, GUIContent label, Object[] candidates)
         {
             var leftPos = LeftPartOf(position);
             var rightPos = RightPartOf(position);
 
-            var index = Mathf.Max(Array.IndexOf(candidates, property.objectReferenceValue), 0);
+            var oldRef = objectProperty.objectReferenceValue;
+            var index = Mathf.Max(Array.IndexOf(candidates, oldRef), 0);
 
             EditorGUI.BeginChangeCheck();
 
-            var countedNames = CountedNames(candidates, includeAddNew: !IsFinder).ToArray();
+            var countedNames = CountedNames(candidates, AbleToAddNew).ToArray();
             var newIndex = EditorGUI.Popup(rightPos, index, countedNames);
 
-            var oldRef = property.objectReferenceValue;
-
-            if (EditorGUI.EndChangeCheck() || !oldRef || !UnwrapElementType(fieldInfo.FieldType).IsInstanceOfType(oldRef))
+            if (EditorGUI.EndChangeCheck() || !oldRef || !oldRef.GetType().IsAssignableFrom(TargetType))
             {
-                property.objectReferenceValue = newIndex < candidates.Length ? candidates[newIndex] : AddedComponent();
+                objectProperty.objectReferenceValue = newIndex < candidates.Length ? candidates[newIndex] : AddedComponent();
 
-                if (!oldRef || oldRef != property.objectReferenceValue)
+                if (!oldRef || oldRef != objectProperty.objectReferenceValue)
                 {
                     Undo.RecordObject(_target, "Changed property value");
-                    property.serializedObject.ApplyModifiedProperties();
+                    objectProperty.serializedObject.ApplyModifiedProperties();
                 }
             }
 
-            using (new EditorGUI.DisabledScope()) 
-                EditorGUI.ObjectField(leftPos, property, Formatted(label, Attribute));
+            using (new EditorGUI.DisabledScope(true)) 
+                EditorGUI.ObjectField(leftPos, objectProperty, Formatted(label, Attribute));
         }
 
-        private void NoneFoundField(Rect position, SerializedProperty property, GUIContent label)
+        private void NoneFoundField(Rect position, SerializedProperty objectProperty, GUIContent label)
         {
             var leftPos = LeftPartOf(position);
             var rightPos = RightPartOf(position);
 
-            property.objectReferenceValue = null;
+            objectProperty.objectReferenceValue = null;
 
-            using (new EditorGUI.DisabledScope()) 
-                EditorGUI.ObjectField(leftPos, property, Formatted(label, Attribute));
+            using (new EditorGUI.DisabledScope(true)) 
+                EditorGUI.ObjectField(leftPos, objectProperty, Formatted(label, Attribute));
 
-            if (IsFinder)
+            if (AbleToAddNew)
+            {
+                var button = GUI.Button(rightPos, "Add");
+                if (button) objectProperty.objectReferenceValue = AddedComponent();
+            }
+            else
             {
                 GUI.color = Color.red;
                 GUI.Label(rightPos, "None found.");
             }
-            else
-            {
-                var button = GUI.Button(rightPos, "Add");
-                if (button) property.objectReferenceValue = AddedComponent();
-            }
         }
 
-        private Component AddedComponent() => _target!.gameObject.AddComponent(FieldType);
+        private Component AddedComponent() => _target!.gameObject.AddComponent(TargetType);
 
-        private static Rect RightPartOf(Rect position)
-        {
-            position.x += position.width * (1 - ButtonWidth);
-            position.width *= ButtonWidth;
-            return position;
-        }
-
-        private static Rect LeftPartOf(Rect position)
-        {
-            position.width *= FieldWidth;
-            return position;
-        }
-
-        private static GUIContent Formatted(GUIContent label, in GetAttribute attribute)
-        {
-            label.text = $"{label.text} [src: {attribute.GetterSource.ToString()}]";
-            return label;
-        }
-
-        private static Object[] CandidateObjects(SerializedProperty property, in GetterSource getterSource, in FieldInfo fieldInfo)
+        private static Object[] CandidateObjects(SerializedProperty property, Type targetType, GetterSource getterSource)
         {
             var mb = property.serializedObject.targetObject;
-            var fieldType = UnwrapElementType(fieldInfo.FieldType);
             return mb
                 ? getterSource switch
                 {
-                    GetterSource.Object => (mb as MonoBehaviour)?.GetComponents(fieldType) as Object[],
-                    GetterSource.Children => (mb as MonoBehaviour)?.GetComponentsInChildren(fieldType, true) as Object[],
-                    GetterSource.Parent => (mb as MonoBehaviour)?.GetComponentsInParent(fieldType, true) as Object[],
-                    GetterSource.Find => Object.FindObjectsOfType(fieldType, true),
-                    GetterSource.FindAssets => GetAllAssetsOfType(fieldType),
+                    // ReSharper disable scope CoVariantArrayConversion
+                    GetterSource.Object => (mb as MonoBehaviour)?.GetComponents(targetType),
+                    GetterSource.Children => (mb as MonoBehaviour)?.GetComponentsInChildren(targetType, true),
+                    GetterSource.Parent => (mb as MonoBehaviour)?.GetComponentsInParent(targetType, true),
+                    GetterSource.Find => Object.FindObjectsOfType(targetType, true),
+                    GetterSource.FindAssets => GetAllAssetsOfType(targetType),
                     _ => null
                 }
                 : null;
         }
 
-        private static Object[] GetAllAssetsOfType(Type type)
-        {
-            var guids = AssetDatabase.FindAssets($"t:{type.Name}");
-            var assets = guids
+        private static Object[] GetAllAssetsOfType(Type type) =>
+            AssetDatabase.FindAssets($"t:{type.Name}")
                 .Select(x => AssetDatabase.LoadAssetAtPath<Object>(AssetDatabase.GUIDToAssetPath(x)))
                 .Where(x => x != null)
                 .ToArray();
-            return assets;
-        }
-
-        private static IEnumerable<string> CountedNames(Object[] input, bool includeAddNew = false)
-        {
-            var res = new List<string>(input.Length + 1);
-            var names = input.Select(item => item.name).ToArray();
-
-            var indexTrackerDictionary = names
-                .GroupBy(item => item)
-                .Where(item => item.Count() > 1)
-                .ToDictionary(item => item.Key, _ => 0);
-
-            foreach (var item in names)
-            {
-                if (!indexTrackerDictionary.TryGetValue(item, out var value)) // If not a duplicate...
-                {
-                    res.Add(item); // We don't care.
-                    continue;
-                }
-
-                indexTrackerDictionary[item] = ++value; // We've now encountered this item {value} times.
-                res.Add($"{item} [{value - 1}]");
-            }
-
-            if (includeAddNew) res.Add("(Add new)");
-            return res;
-        }
-
-        private static bool IsList(Type type) => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>);
-        private static Type UnwrapElementType(Type type)
-        {
-            if (type.IsArray) return UnwrapArrayElementType(type);
-            if (IsList(type)) return UnwrapListElementType(type);
-            return type;
-        }
-        private static Type UnwrapArrayElementType(Type type) => type.IsArray ? UnwrapArrayElementType(type.GetElementType()) : type;
-        private static Type UnwrapListElementType(Type type) => IsList(type) ? UnwrapListElementType(type.GetGenericArguments()[0]) : type;
     }
 }
 #endif

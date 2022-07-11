@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
 
 #if UNITY_EDITOR
@@ -23,7 +22,7 @@ namespace Extra.Attributes
             return position;
         }
         
-        private static GUIContent Formatted(GUIContent label, in GetAttribute attribute)
+        private static GUIContent Formatted(GUIContent label, in GetAttributeBase attribute)
         {
             label.text = $"{label.text} [src: {attribute.GetterSource.ToString()}]";
             return label;

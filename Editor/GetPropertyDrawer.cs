@@ -9,52 +9,57 @@ using Object = UnityEngine.Object;
 
 namespace Extra.Attributes
 {
-    [CustomPropertyDrawer(typeof(GetAttribute), true)]
+    [CustomPropertyDrawer(typeof(GetAttributeBase), true)]
     public partial class GetPropertyDrawer : PropertyDrawer
     {
-        private bool _initialized;
         private Object[] _candidates;
+        private Object _target;
+        private bool _ableToAddNew;
         
-        private GetAttribute _attribute;
-        private GetAttribute Attribute => _attribute ??= (GetAttribute) attribute;
-
-        private Type _fieldType;
-        private Type FieldType => _fieldType ??= fieldInfo.FieldType;
+        private SerializedProperty _objectProperty;
+        private Type _fieldType, _elementType, _targetType;
         
-        private Type _targetType;
-        private Type TargetType => _targetType ??= FieldType.Unwrap();
-        
-        private MonoBehaviour _target;
+        private GetAttributeBase _attribute;
+        private GetAttributeBase Attribute => _attribute ??= (GetAttributeBase) attribute;
 
         private bool IsFinder => Attribute.GetterSource is GetterSource.Find or GetterSource.FindAssets;
-        private bool AbleToAddNew => !IsFinder && !FieldType.IsWrapper();
+        private Component AddComponent => (_target as MonoBehaviour)?.gameObject.AddComponent(_targetType);
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            _target = property.serializedObject.targetObject as MonoBehaviour;
+            _target = property.serializedObject.targetObject;
 
-            if (ShouldCheckForUpdate())
-                _candidates = CandidateObjects(property, TargetType, Attribute.GetterSource);
-
-            var elementType = FieldType.UnwrapElement();
-            var objectProperty = elementType.IsWrapper() ? property.FindPropertyRelative(IPropertyWrapper.PropertyName) : property;
-
-            EditorGUI.BeginProperty(position, label, objectProperty);
-
-            if (_candidates.Length <= 0)
-                NoneFoundField(position, objectProperty, label);
-            else
-                CandidatesField(position, objectProperty, label, _candidates);
-
-            EditorGUI.EndProperty();
-
-            bool ShouldCheckForUpdate()
+            if (ShouldCheckForUpdate(position))
             {
-                if (!_initialized) return true;
-                if (_candidates == null) return true;
-                if (Event.current.type != EventType.MouseDown) return false;
-                return position.Contains(Event.current.mousePosition);
+                UpdateTypes();
+                _candidates = Attribute.GetCandidates(_target, _targetType);
             }
+            _objectProperty = _elementType.IsWrapper() ? property.FindPropertyRelative(IPropertyWrapper.PropertyName) : property;
+
+            using (new EditorGUI.PropertyScope(position, label, _objectProperty))
+            {
+                if (_candidates!.Length <= 0)
+                    NoneFoundField(position, _objectProperty, label);
+                else
+                    CandidatesField(position, _objectProperty, label, _candidates);
+            }
+            
+            property.serializedObject.Update();
+        }
+        
+        private bool ShouldCheckForUpdate(Rect position)
+        {
+            if (_candidates == null) return true;
+            if (Event.current.type != EventType.MouseDown) return false;
+            return position.Contains(Event.current.mousePosition);
+        }
+
+        private void UpdateTypes()
+        {
+            _fieldType = fieldInfo.FieldType;
+            _elementType = _fieldType.UnwrapElement();
+            _targetType = _fieldType.Unwrap();
+            _ableToAddNew = _target && _target is MonoBehaviour && !IsFinder && !_elementType.IsWrapper();
         }
 
         private void CandidatesField(Rect position, SerializedProperty objectProperty, GUIContent label, Object[] candidates)
@@ -67,12 +72,12 @@ namespace Extra.Attributes
 
             EditorGUI.BeginChangeCheck();
 
-            var countedNames = CountedNames(candidates, AbleToAddNew).ToArray();
+            var countedNames = CountedNames(candidates, _ableToAddNew).ToArray();
             var newIndex = EditorGUI.Popup(rightPos, index, countedNames);
 
-            if (EditorGUI.EndChangeCheck() || !oldRef || !oldRef.GetType().IsAssignableFrom(TargetType))
+            if (EditorGUI.EndChangeCheck() || !oldRef || !oldRef.GetType().IsAssignableFrom(_targetType))
             {
-                objectProperty.objectReferenceValue = newIndex < candidates.Length ? candidates[newIndex] : AddedComponent();
+                objectProperty.objectReferenceValue = newIndex < candidates.Length ? candidates[newIndex] : AddComponent;
 
                 if (!oldRef || oldRef != objectProperty.objectReferenceValue)
                 {
@@ -82,7 +87,7 @@ namespace Extra.Attributes
             }
 
             using (new EditorGUI.DisabledScope(true)) 
-                EditorGUI.ObjectField(leftPos, objectProperty, Formatted(label, Attribute));
+                EditorGUI.PropertyField(leftPos, objectProperty, Formatted(label, Attribute));
         }
 
         private void NoneFoundField(Rect position, SerializedProperty objectProperty, GUIContent label)
@@ -93,44 +98,21 @@ namespace Extra.Attributes
             objectProperty.objectReferenceValue = null;
 
             using (new EditorGUI.DisabledScope(true)) 
-                EditorGUI.ObjectField(leftPos, objectProperty, Formatted(label, Attribute));
+                EditorGUI.PropertyField(leftPos, objectProperty, Formatted(label, Attribute));
 
-            if (AbleToAddNew)
+            if (_ableToAddNew)
             {
-                var button = GUI.Button(rightPos, "Add");
-                if (button) objectProperty.objectReferenceValue = AddedComponent();
+                if (GUI.Button(rightPos, "Add")) 
+                    objectProperty.objectReferenceValue = AddComponent;
             }
             else
             {
+                var wasColor = GUI.color;
                 GUI.color = Color.red;
-                GUI.Label(rightPos, "None found.");
+                EditorGUI.LabelField(rightPos, "None found.");
+                GUI.color = wasColor;
             }
         }
-
-        private Component AddedComponent() => _target!.gameObject.AddComponent(TargetType);
-
-        private static Object[] CandidateObjects(SerializedProperty property, Type targetType, GetterSource getterSource)
-        {
-            var mb = property.serializedObject.targetObject;
-            return mb
-                ? getterSource switch
-                {
-                    // ReSharper disable scope CoVariantArrayConversion
-                    GetterSource.Object => (mb as MonoBehaviour)?.GetComponents(targetType),
-                    GetterSource.Children => (mb as MonoBehaviour)?.GetComponentsInChildren(targetType, true),
-                    GetterSource.Parent => (mb as MonoBehaviour)?.GetComponentsInParent(targetType, true),
-                    GetterSource.Find => Object.FindObjectsOfType(targetType, true),
-                    GetterSource.FindAssets => GetAllAssetsOfType(targetType),
-                    _ => null
-                }
-                : null;
-        }
-
-        private static Object[] GetAllAssetsOfType(Type type) =>
-            AssetDatabase.FindAssets($"t:{type.Name}")
-                .Select(x => AssetDatabase.LoadAssetAtPath<Object>(AssetDatabase.GUIDToAssetPath(x)))
-                .Where(x => x != null)
-                .ToArray();
     }
 }
 #endif

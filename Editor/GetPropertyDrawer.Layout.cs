@@ -22,7 +22,7 @@ namespace Extra.Attributes
             return position;
         }
         
-        private static GUIContent Formatted(GUIContent label, in GetAttributeBase attribute)
+        private static GUIContent Formatted(GUIContent label, in GetAttribute attribute)
         {
             label.text = $"{label.text} [src: {attribute.GetterSource.ToString()}]";
             return label;

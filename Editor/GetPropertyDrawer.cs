@@ -9,7 +9,7 @@ using Object = UnityEngine.Object;
 
 namespace Extra.Attributes
 {
-    [CustomPropertyDrawer(typeof(GetAttributeBase), true)]
+    [CustomPropertyDrawer(typeof(GetAttribute), true)]
     public partial class GetPropertyDrawer : PropertyDrawer
     {
         private Object[] _candidates;
@@ -19,10 +19,10 @@ namespace Extra.Attributes
         private SerializedProperty _objectProperty;
         private Type _fieldType, _elementType, _targetType;
         
-        private GetAttributeBase _attribute;
-        private GetAttributeBase Attribute => _attribute ??= (GetAttributeBase) attribute;
+        private GetAttribute _attribute;
+        private GetAttribute Attribute => _attribute ??= (GetAttribute) attribute;
 
-        private bool IsFinder => Attribute.GetterSource is GetterSource.Find or GetterSource.FindAssets;
+        private bool IsFinder => Attribute.GetterSource.HasFlag(GetterSource.Find) || Attribute.GetterSource.HasFlag(GetterSource.FindAssets);
         private Component AddComponent => (_target as MonoBehaviour)?.gameObject.AddComponent(_targetType);
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)

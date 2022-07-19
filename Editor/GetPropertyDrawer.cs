@@ -1,6 +1,7 @@
 ﻿#if UNITY_EDITOR
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Extra.Editor.Properties;
 using UnityEditor;
@@ -32,7 +33,7 @@ namespace Extra.Attributes
             if (ShouldCheckForUpdate(position))
             {
                 UpdateTypes();
-                _candidates = Attribute.GetCandidates(_target, _targetType);
+                _candidates = GetCandidates(Attribute.GetterSource, _target, _targetType);
             }
             _objectProperty = _elementType.IsWrapper() ? property.FindPropertyRelative(IPropertyWrapper.PropertyName) : property;
 
@@ -43,8 +44,6 @@ namespace Extra.Attributes
                 else
                     CandidatesField(position, _objectProperty, label, _candidates);
             }
-            
-            property.serializedObject.Update();
         }
         
         private bool ShouldCheckForUpdate(Rect position)
@@ -83,11 +82,37 @@ namespace Extra.Attributes
                 {
                     Undo.RecordObject(_target, "Changed property value");
                     objectProperty.serializedObject.ApplyModifiedProperties();
+                    objectProperty.serializedObject.Update();
                 }
             }
 
             using (new EditorGUI.DisabledScope(true)) 
                 EditorGUI.PropertyField(leftPos, objectProperty, Formatted(label, Attribute));
+        }
+
+        private static Object[] GetCandidates(GetterSource getterSource, Object target, Type type)
+        {
+            var results = Enumerable.Empty<Object>();
+            if (target is MonoBehaviour mb)
+            {
+                if (getterSource.HasFlag(GetterSource.Object)) 
+                    results = results.Concat(mb.GetComponents(type));
+                if (getterSource.HasFlag(GetterSource.Children))
+                    results = results.Concat(mb.GetComponentsInChildren(type));
+                if (getterSource.HasFlag(GetterSource.Parent)) 
+                    results = results.Concat(mb.GetComponentsInParent(type));
+            }
+            if (getterSource.HasFlag(GetterSource.Find) && !type.IsInterface) 
+                results = results.Concat(Object.FindObjectsOfType(type));
+            if (getterSource.HasFlag(GetterSource.FindAssets)) 
+                results = results.Concat(FindAllAssetsOfType(type));
+
+            return results.Distinct().ToArray();
+            
+            static IEnumerable<Object> FindAllAssetsOfType(Type type) =>
+                AssetDatabase.FindAssets($"t:{type.Name}")
+                    .Select(x => AssetDatabase.LoadAssetAtPath<Object>(AssetDatabase.GUIDToAssetPath(x)))
+                    .Where(x => x != null);
         }
 
         private void NoneFoundField(Rect position, SerializedProperty objectProperty, GUIContent label)

@@ -38,6 +38,9 @@ public class MyBehaviour : MonoBehaviour
     // Gets the object from anywhere in AssetDatabase; works with ScriptableObjects.
     [FindAssets] public CardData data;
     
+    // InterfaceReference type included for convenience; gets objects that implement this interface.
+    [Get] public InterfaceReference<IInteractionHandler> interactable;
+    
     ...
 }
 ```

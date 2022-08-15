@@ -5,7 +5,7 @@ using Extra.Editor.Properties;
 
 namespace Extra.Attributes
 {
-    internal static class TypeUnwrapper
+    public static class TypeUnwrapper
     {
         public static bool IsArray(this Type type) => type.IsArray;
         public static bool IsList(this Type type) => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>);

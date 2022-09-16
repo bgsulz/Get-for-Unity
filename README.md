@@ -1,16 +1,14 @@
 # Get
 
-| [License](License.md) | [Documentation](Docs.md) |
+| [License](LICENSE.md) | [Documentation](DOCS.md) |
 | - | - |
-
-___
 
 **Unity attribute that magically seeks out object references.**
 Stay in the flow; stop fiddling around dragging and dropping into with Inspector fields.
 
 ---
 
-Tag your serialized fields with `[Get]`...
+Tag your serialized fields with a `[Get]` attribute...
 
 ```c#
 [GetInChildren] public Collider myCollider;
@@ -18,7 +16,7 @@ Tag your serialized fields with `[Get]`...
 
 ...and select the reference you're looking for.
 
-![GetAttribute Graphics](https://user-images.githubusercontent.com/38191432/127414944-9ce09f7d-3aa0-4d1f-adca-2ee5062d92ae.png)
+![GetAttribute Update Demo](https://user-images.githubusercontent.com/38191432/190724011-d235cb6f-7d09-4844-8fad-d18abd8b62d7.png)
 
 ## Quick start guide
 Simply type the attribute before serialized fields.

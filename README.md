@@ -1,6 +1,6 @@
 # Get
 
-| [License](LICENSE.md) | [Documentation](DOCS.md) |
+| [License](LICENSE) | [Documentation](DOCS.md) |
 | - | - |
 
 **Unity attribute that magically seeks out object references.**

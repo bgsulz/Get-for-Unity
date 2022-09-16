@@ -1,8 +1,16 @@
-# GetAttribute
-**Unity attribute that fills your component and object references for you.**
-Stay in the flow and keep coding rather than fiddling around with Inspector fields.
+# Get
 
-Simply tag your fields with the attribute...
+| [License](License.md) | [Documentation](Docs.md) |
+| - | - |
+
+___
+
+**Unity attribute that magically seeks out object references.**
+Stay in the flow; stop fiddling around dragging and dropping into with Inspector fields.
+
+---
+
+Tag your serialized fields with `[Get]`...
 
 ```c#
 [GetInChildren] public Collider myCollider;
@@ -13,9 +21,9 @@ Simply tag your fields with the attribute...
 ![GetAttribute Graphics](https://user-images.githubusercontent.com/38191432/127414944-9ce09f7d-3aa0-4d1f-adca-2ee5062d92ae.png)
 
 ## Quick start guide
-Simply type the attribute before public or serialized fields.
+Simply type the attribute before serialized fields.
 
-This works **only in-editor,** not for objects created at runtime. In other words, it replaces dragging and dropping references in the Inspector.
+This works **only in-editor,** not for objects created at runtime. In other words, it replaces, simplifies, and accelerates the process of selecting references in the Inspector.
 
 ```c#
 using Extra.Attributes;
@@ -30,7 +38,10 @@ public class MyBehaviour : MonoBehaviour
     [GetInChildren] public SpriteRenderer spriteRenderer;
     
     // Gets the component from the same GameObject or its parent, like GetComponentInParent.
-    [GetInParent] public Collider2D collider;
+    [GetInParent] public Collider2D hitbox;
+    
+    // Get the component from the same GameObject, its parent, or its children.
+    [GetInChildrenAndParent] public SortingGroup sortingGroup;
     
     // Gets the component from any GameObject, like FindObjectOfType.
     [Find] public GameManager gameManager;
@@ -38,7 +49,8 @@ public class MyBehaviour : MonoBehaviour
     // Gets the object from anywhere in AssetDatabase; works with ScriptableObjects.
     [FindAssets] public CardData data;
     
-    // InterfaceReference type included for convenience; gets objects that implement this interface.
+    // Gets objects that implement this interface. 
+    // This is a wrapper type that works with any Get attribute. You can implement your own wrapper types.
     [Get] public InterfaceReference<IInteractionHandler> interactable;
     
     ...

@@ -15,46 +15,46 @@ namespace Extra.Attributes
         FindAssets = 16
     }
 
-    public class GetAttributeBase : PropertyAttribute
+    public class GetFromAttribute : PropertyAttribute
     {
         public GetterSource GetterSource { get; }
         public bool AutoFill { get; }
 
-        public GetAttributeBase(GetterSource getterSource, bool autoFill = true) 
+        public GetFromAttribute(GetterSource getterSource, bool autoFill = true) 
             => (GetterSource, AutoFill) = (getterSource, autoFill);
     }
     
-    public class GetAttribute : GetAttributeBase
+    public class GetAttribute : GetFromAttribute
     {
         public GetAttribute(bool autoFill = true) : base(GetterSource.Object, autoFill) { }
     }
     
-    public class GetInChildrenAttribute : GetAttributeBase
+    public class GetInChildrenAttribute : GetFromAttribute
     {
         public GetInChildrenAttribute(bool autoFill = true) : base(GetterSource.Children, autoFill) { }
     }
 
-    public class GetInParentAttribute : GetAttributeBase
+    public class GetInParentAttribute : GetFromAttribute
     {
         public GetInParentAttribute(bool autoFill = true) : base(GetterSource.Parent, autoFill) { }
     }
     
-    public class GetInChildrenAndParentAttribute : GetAttributeBase
+    public class GetInChildrenAndParentAttribute : GetFromAttribute
     {
         public GetInChildrenAndParentAttribute(bool autoFill = true) : base(GetterSource.Children | GetterSource.Parent, autoFill) { }
     }
 
-    public class FindAttribute : GetAttributeBase
+    public class FindAttribute : GetFromAttribute
     {
         public FindAttribute(bool autoFill = true) : base(GetterSource.Find, autoFill) { }
     }
 
-    public class FindAssetsAttribute : GetAttributeBase
+    public class FindAssetsAttribute : GetFromAttribute
     {
         public FindAssetsAttribute(bool autoFill = true) : base(GetterSource.FindAssets, autoFill) { }
     }
     
-    public class FindAllAttribute : GetAttributeBase
+    public class FindAllAttribute : GetFromAttribute
     {
         public FindAllAttribute(bool autoFill = true) : base(GetterSource.Children | GetterSource.Parent | GetterSource.FindAssets, autoFill) { }
     }

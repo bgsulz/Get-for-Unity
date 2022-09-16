@@ -9,7 +9,7 @@ namespace Extra.Attributes
     {
         public static bool IsArray(this Type type) => type.IsArray;
         public static bool IsList(this Type type) => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>);
-        public static bool IsWrapper(this Type type) => type.GetInterface(nameof(IPropertyWrapper)) != null;
+        public static bool IsWrapper(this Type type) => type?.GetInterface(nameof(IPropertyWrapper)) != null;
         
         public static Type Unwrap(this Type type)
         {

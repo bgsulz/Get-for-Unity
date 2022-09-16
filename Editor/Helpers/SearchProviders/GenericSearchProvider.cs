@@ -12,6 +12,7 @@ namespace Extra.Attributes
     {
         private T[] _listItems;
         private Action<T> _selected;
+        private bool _flatten;
 
         protected abstract string Name { get; }
         protected virtual char GroupSeparator => '/';
@@ -20,9 +21,10 @@ namespace Extra.Attributes
         protected abstract string StringRepresentation(T value);
         protected virtual Texture IconRepresentation(T value) => null;
 
-        public void Construct(T[] listItems, Action<T> selected, bool forceInitialize = false)
+        public void Construct(T[] listItems, Action<T> selected, bool flatten = false, bool forceInitialize = false)
         {
             _listItems = listItems;
+            _flatten = flatten;
             if (forceInitialize || _selected == null) _selected = selected;
         }
 
@@ -49,13 +51,17 @@ namespace Extra.Attributes
             foreach (var item in stringItems)
             {
                 var splitName = item.Split(ItemSeparator);
+                var content = splitName.Last();
+                var level = splitName.Length;
 
-                entries.AddRange(GroupEntries(splitName, ref knownGroups));
+                if (_flatten)
+                    level = 1;
+                else entries.AddRange(GroupEntries(splitName, ref knownGroups));
 
                 var original = stringToOriginal[item];
-                entries.Add(new SearchTreeEntry(new GUIContent(splitName.Last(), IconRepresentation(original)))
+                entries.Add(new SearchTreeEntry(new GUIContent(content, IconRepresentation(original)))
                 {
-                    level = splitName.Length,
+                    level = level,
                     userData = original
                 });
             }

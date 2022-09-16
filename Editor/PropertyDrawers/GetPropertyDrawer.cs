@@ -8,12 +8,12 @@ using Object = UnityEngine.Object;
 
 namespace Extra.Attributes
 {
-    [CustomPropertyDrawer(typeof(GetAttributeBase), true)]
+    [CustomPropertyDrawer(typeof(GetFromAttribute), true)]
     public partial class GetPropertyDrawer : PropertyDrawer
     {
         private Object[] _candidates;
         private Object _inspectedObject;
-        private PopupHelper.NewableType _newableType;
+        private NewableType _newableType;
         
         private SerializedProperty _objectProperty;
         private Type _fieldType, _elementType, _targetType;
@@ -21,8 +21,8 @@ namespace Extra.Attributes
         private ObjectSearchProvider _objectSearchProvider;
         private TypeSearchProvider _typeSearchProvider;
         
-        private GetAttributeBase _attribute;
-        private GetAttributeBase Attribute => _attribute ??= (GetAttributeBase) attribute;
+        private GetFromAttribute _attribute;
+        private GetFromAttribute Attribute => _attribute ??= (GetFromAttribute) attribute;
 
         private bool IsFinder => Attribute.GetterSource.HasFlag(GetterSource.Find) || Attribute.GetterSource.HasFlag(GetterSource.FindAssets);
         
@@ -59,13 +59,13 @@ namespace Extra.Attributes
                 return propertyRect.Contains(Event.current.mousePosition);
             }
             
-            PopupHelper.NewableType CalculateNewableType()
+            NewableType CalculateNewableType()
             {
                 if (_inspectedObject && _inspectedObject is MonoBehaviour && !IsFinder && !_elementType.IsWrapper())
-                    return PopupHelper.NewableType.Component;
+                    return NewableType.Component;
                 if (Attribute.GetterSource.HasFlag(GetterSource.FindAssets) && typeof(ScriptableObject).IsAssignableFrom(_targetType))
-                    return PopupHelper.NewableType.Asset;
-                return 0;
+                    return NewableType.Asset;
+                return NewableType.None;
             }
         }
 
@@ -81,9 +81,9 @@ namespace Extra.Attributes
             leftPos = Shorten(leftPos, out var rightPos);
 
             if (DropdownButton(rightPos))
-                _objectSearchProvider.PopupSelectObject(objectProperty, candidates);
+                _objectSearchProvider.PopupSelectObject(objectProperty, candidates, true);
 
-            if (Attribute.AutoFill && !objectProperty.objectReferenceValue)
+            if (Attribute.AutoFill && !Application.isPlaying && !objectProperty.objectReferenceValue)
                 objectProperty.objectReferenceValue = candidates.FirstOrDefault();
 
             using (new EditorGUI.DisabledScope(Attribute.AutoFill))
@@ -94,18 +94,17 @@ namespace Extra.Attributes
         {
             var leftPos = position;
             
-            if (_newableType != 0)
+            leftPos = Shorten(leftPos, out var buttonPos);
+            
+            if (_newableType != NewableType.None)
             {
-                leftPos = Shorten(leftPos, out var buttonPos);
                 if (AddNewButton(buttonPos))
                     _typeSearchProvider.PopupAddNewOfType(objectProperty, _targetType, _newableType);
             }
             else
             {
-                leftPos = Shorten(leftPos, out var rightPos, EditorGUIUtility.singleLineHeight * 3f);
-                
                 objectProperty.objectReferenceValue = null;
-                EditorGUI.LabelField(rightPos, "None found.");
+                ErrorIconLabel(buttonPos);
             }
 
             using (new EditorGUI.DisabledScope(true)) 

@@ -1,10 +1,10 @@
 # Get
 
-| [Documentation](DOCS.md) |
-| - |
-
 **Unity attribute that magically seeks out object references.**
 Stay in the flow; stop fiddling around dragging and dropping into with Inspector fields.
+
+| [Documentation](DOCS.md) |
+| - |
 
 ---
 

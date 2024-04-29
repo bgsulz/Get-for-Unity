@@ -23,7 +23,7 @@ namespace Extra.Attributes
                     results = results.Concat(mb.GetComponentsInParent(type));
             }
             if (getterSource.HasFlag(GetterSource.Find) && !type.IsInterface) 
-                results = results.Concat(Object.FindObjectsOfType(type));
+                results = results.Concat(Object.FindObjectsByType(type, FindObjectsSortMode.None));
             if (getterSource.HasFlag(GetterSource.FindAssets)) 
                 results = results.Concat(FindAllAssetsOfType(type));
 

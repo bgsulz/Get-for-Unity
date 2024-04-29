@@ -1,7 +1,8 @@
-﻿using UnityEditor.Experimental.GraphView;
-using UnityEngine;
+﻿using UnityEngine;
 
 #if UNITY_EDITOR
+using UnityEditor.Experimental.GraphView;
+
 namespace Extra.Attributes
 {
     public static class SearchWindowGUI
